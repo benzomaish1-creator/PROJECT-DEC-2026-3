@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Bookings Report</title>
+    <link rel="stylesheet" href="../static/bootstrap-5.3.8-dist/bootstrap-5.3.8-dist/css/bootstrap.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../static/custom.css">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-secondary">
+            ← Back to Dashboard
+        </a>
+        <a href="{{ url_for('doctor_logout') }}" class="btn btn-outline-danger">
+            Logout
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-info">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h3 class="mb-4">Bookings Report</h3>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label mb-1">From</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date }}" required>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label mb-1">To</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date }}" required>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label mb-1">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+                        <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>Approved / Confirmed</option>
+                        <option value="Declined" {% if status_filter == 'Declined' %}selected{% endif %}>Declined</option>
+                        <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Marked Complete</option>
+                        <option value="Referred" {% if status_filter == 'Referred' %}selected{% endif %}>Referred</option>
+                        <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                        <option value="Rescheduled" {% if status_filter == 'Rescheduled' %}selected{% endif %}>Rescheduled</option>
+                        <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">View Report</button>
+                </div>
+                {% if start_date and end_date %}
+                <div class="col-auto">
+                    <a href="{{ url_for('doctor_appointments_report_pdf', start_date=start_date, end_date=end_date, status=status_filter) }}"
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-file-earmark-pdf"></i> Download All (Combined PDF)
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    {% if start_date and end_date %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <strong>{{ report_rows|length }}</strong> booking(s) between {{ start_date }} and {{ end_date }}
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Patient</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Referred To</th>
+                        <th>Report</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in report_rows %}
+                    <tr>
+                        <td>{{ r.appointment_id }}</td>
+                        <td>{{ r.pat_first }} {{ r.pat_last }}</td>
+                        <td>{{ r.appointment_date }}</td>
+                        <td>{{ r.appointment_time }}</td>
+                        <td>
+                            <span class="badge
+                                {% if r.status == 'Confirmed' %}bg-success
+                                {% elif r.status == 'Completed' %}bg-primary
+                                {% elif r.status == 'Declined' %}bg-danger
+                                {% elif r.status == 'Cancelled' %}bg-secondary
+                                {% elif r.status == 'Rescheduled' %}bg-warning
+                                {% else %}bg-warning{% endif %}">
+                                {{ r.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if r.referred_to_first %}
+                            Dr. {{ r.referred_to_first }} {{ r.referred_to_last }}
+                            <span class="badge bg-info text-dark">{{ r.referral_status }}</span>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('doctor_appointment_report', appointment_id=r.appointment_id) }}"
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-file-earmark-pdf"></i> Download PDF
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-muted text-center">No bookings in this date range.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

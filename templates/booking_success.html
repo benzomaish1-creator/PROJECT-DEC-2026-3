@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Booking Successful</title>
+    <link rel="stylesheet" href="../static/bootstrap-5.3.8-dist/bootstrap-5.3.8-dist/css/bootstrap.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../static/custom.css">
+</head>
+<body class="bg-light">
+<div class="container mt-5" style="max-width:500px;">
+
+    <div class="card shadow-lg p-4 text-center">
+        <i class="bi bi-check-circle-fill text-success" style="font-size:72px;"></i>
+        <h3 class="mt-2">Booking Successful</h3>
+        <p class="text-muted">Your M-PESA payment was requested and your appointment has been booked. The doctor will confirm receipt of your payment, and you will see it marked as Paid on My Appointments.</p>
+
+        <table class="table table-borderless text-start mb-4">
+            <tr><th>Doctor</th><td>Dr. {{ appointment.firstname }} {{ appointment.surname }} ({{ appointment.speciality }})</td></tr>
+            <tr><th>Date</th><td>{{ appointment.appointment_date }}</td></tr>
+            <tr><th>Time</th><td>{{ appointment.appointment_time }}</td></tr>
+            <tr><th>Reason</th><td>{{ appointment.reason }}</td></tr>
+            <tr><th>Status</th><td>{{ appointment.status }}</td></tr>
+            <tr><th>Amount</th><td>KES {{ amount }}</td></tr>
+            <tr><th>Payment</th><td>Awaiting doctor's confirmation</td></tr>
+            {% if phone %}<tr><th>Paid from</th><td>{{ phone }}</td></tr>{% endif %}
+        </table>
+
+        <a href="/my_appointments" class="btn btn-primary w-100">View My Appointments</a>
+    </div>
+</div>
+</body>
+</html>

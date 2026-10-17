@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Dashboard</title>
+    <link rel="stylesheet" href="../static/bootstrap-5.3.8-dist/bootstrap-5.3.8-dist/css/bootstrap.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../static/custom.css">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('specialists') }}" class="btn btn-secondary">
+            ← Back to Specialists
+        </a>
+        <div>
+            <a href="{{ url_for('doctor_appointments_report') }}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-file-earmark-pdf"></i> Bookings Report
+            </a>
+            <a href="{{ url_for('doctor_logout') }}" class="btn btn-outline-danger">
+                Logout
+            </a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-danger">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if incoming_referrals %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white"><strong>Incoming Referrals</strong></div>
+        <ul class="list-group list-group-flush">
+            {% for r in incoming_referrals %}
+            <li class="list-group-item">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <strong>{{ r.pat_first }} {{ r.pat_last }}</strong>
+                        {% if r.pat_phone %}<span class="text-muted">({{ r.pat_phone }})</span>{% endif %}
+                        referred by Dr. {{ r.from_first }} {{ r.from_last }}
+                        <span class="badge
+                            {% if r.status == 'Accepted' %}bg-success
+                            {% elif r.status == 'Declined' %}bg-danger
+                            {% else %}bg-warning{% endif %} ms-2">
+                            {{ r.status }}
+                        </span>
+                        <p class="mb-0 mt-1"><strong>Reason:</strong> {{ r.reason }}</p>
+                        <small class="text-muted">{{ r.created_at }}</small>
+
+                        {% if r.status == 'Accepted' %}
+                            {% if r.resulting_appointment_id %}
+                            <p class="mb-0 mt-2 text-success">
+                                <i class="bi bi-calendar-check"></i>
+                                Scheduled for {{ r.scheduled_date }} at {{ r.scheduled_time }}
+                            </p>
+                            {% else %}
+                            <form method="POST" action="{{ url_for('schedule_referral_appointment', referral_id=r.referral_id) }}" class="row g-2 align-items-end mt-2">
+                                <div class="col-auto">
+                                    <label class="form-label mb-0"><strong>Schedule Appointment</strong></label>
+                                </div>
+                                <div class="col-auto">
+                                    <input type="date" name="appointment_date" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-auto">
+                                    <input type="time" name="appointment_time" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <input type="text" name="note" class="form-control form-control-sm" placeholder="Note (optional)">
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary btn-sm">Schedule</button>
+                                </div>
+                            </form>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                        {% if r.status == 'Pending' %}
+                        <form method="POST" action="{{ url_for('respond_to_referral', referral_id=r.referral_id, decision='Accepted') }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-success">Accept</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('respond_to_referral', referral_id=r.referral_id, decision='Declined') }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Decline</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+     {% if message %}
+           <div class="alert alert-warning">{{ message }}</div>
+
+     {% else %}
+
+    <div class="d-flex align-items-center mb-4">
+        {% if my_profile and my_profile.profile_photo %}
+        <img src="{{ url_for('static', filename='images/' ~ my_profile.profile_photo) }}"
+             alt="Profile photo" class="rounded-circle me-3 border"
+             style="width:64px; height:64px; object-fit:cover;">
+        {% else %}
+        <i class="bi bi-person-circle me-3" style="font-size:64px; color: var(--dc-primary);"></i>
+        {% endif %}
+        <div>
+            <h3 class="mb-0">
+                Patients Booked with Dr. {{ my_profile.firstname }} {{ my_profile.surname }}
+            </h3>
+            {% if my_profile %}<small class="text-muted">{{ my_profile.speciality }}</small>{% endif %}
+        </div>
+    </div>
+     
+
+    <div class="row g-3">
+    {% for a in appointments %}
+    <div class="col-12">
+    <div class="card shadow-sm h-100">
+        <div class="card-body">
+        <div class="row g-3">
+
+        <!-- ===== COLUMN 1: booking details, payment and main actions ===== -->
+        <div class="col-lg-4 col-md-12 d-flex flex-column">
+
+            <h5 class="mb-1">{{ a.firstname }} {{ a.lastname }}</h5>
+            <small class="text-muted mb-2">Booking ID: #{{ a.appointment_id }}</small>
+
+            <p class="mb-1"><strong>County:</strong> {{ a.patient_county }}</p>
+            <p class="mb-1"><strong>Reason for visit:</strong> {{ a.reason }}</p>
+            <p class="mb-1"><strong>Date:</strong> {{ a.appointment_date }}</p>
+            <p class="mb-1"><strong>Time:</strong> {{ a.appointment_time }}</p>
+            <p class="mb-2">
+                <strong>Status:</strong>
+                <span class="badge
+                    {% if a.status == 'Approved' %}bg-success
+                    {% elif a.status == 'Completed' %}bg-primary
+                    {% elif a.status == 'Confirmed' %}bg-info
+                    {% elif a.status == 'Declined' %}bg-danger
+                    {% elif a.status == 'Cancelled' %}bg-secondary
+                    {% elif a.status == 'Rescheduled' %}bg-warning
+                    {% else %}bg-warning{% endif %}">
+                    {{ a.status }}
+                </span>
+            </p>
+            {% if a.feedback %}
+            <p class="mb-2"><strong>Your Feedback:</strong> {{ a.feedback }}</p>
+            {% endif %}
+
+            <!-- NEW: M-PESA payment (doctor confirms they received the M-PESA message) -->
+            <p class="mb-2">
+                <strong>Payment:</strong>
+                {% if a.payment_status == 'Paid' %}
+                    <span class="badge bg-success">Paid - KES {{ '%d' % a.amount_paid }}</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">Awaiting confirmation</span>
+                {% endif %}
+                {% if a.payment_phone %}<br><small class="text-muted">M-PESA number: {{ a.payment_phone }}</small>{% endif %}
+            </p>
+            {% if a.payment_status != 'Paid' and a.status not in ['Declined', 'Cancelled'] %}
+            <form method="POST" action="{{ url_for('confirm_payment', appointment_id=a.appointment_id) }}" class="mb-2"
+                  onsubmit="return confirm('Confirm that you have received this M-PESA payment?');">
+                <button type="submit" class="btn btn-success btn-sm w-100">
+                    <i class="bi bi-cash-coin"></i> Confirm Payment Received
+                </button>
+            </form>
+            {% endif %}
+
+            <div class="mt-auto">
+
+            {% if a.referred_to_first %}
+                <div class="alert alert-info py-2 px-3 mb-2">
+                    <i class="bi bi-arrow-right-circle"></i> Referred to Dr. {{ a.referred_to_first }} {{ a.referred_to_last }}
+                </div>
+
+                {% if a.status == 'Completed' %}
+                <a href="{{ url_for('doctor_appointment_report', appointment_id=a.appointment_id) }}" class="btn btn-outline-secondary btn-sm w-100">
+                    Download Report
+                </a>
+                {% endif %}
+
+            {% else %}
+
+            {% if a.status == 'Confirmed' and a.payment_status != 'Paid' %}
+                <button type="button" class="btn btn-primary btn-sm w-100 mb-2" disabled
+                        title="Confirm the M-PESA payment first">Mark Completed</button>
+
+                <!-- NEW: payment was never confirmed, so the doctor can still decline this booking -->
+                <small class="text-muted d-block mb-1">Payment not confirmed yet - confirm it above, or decline this booking.</small>
+                <form method="POST" action="{{ url_for('update_status', appointment_id=a.appointment_id, status='Declined') }}" class="mb-2"
+                      onsubmit="return confirm('Decline this appointment?');">
+                    <button type="submit" class="btn btn-danger btn-sm w-100 mb-1">Decline</button>
+                    <textarea name="reason" class="form-control form-control-sm" rows="2"
+                              placeholder="Reason for declining" required></textarea>
+                </form>
+
+            {% elif a.status == 'Confirmed' %}
+                <form method="POST" action="{{ url_for('update_status', appointment_id=a.appointment_id, status='Completed') }}">
+                    <textarea name="reason" class="form-control form-control-sm mb-1" rows="2"
+                              placeholder="Add a note (optional - only needed if you're not setting up a follow-up or referral)"></textarea>
+                    <button type="submit" class="btn btn-primary btn-sm w-100 mb-2">Mark Completed</button>
+                </form>
+
+            {% elif a.status == 'Completed' %}
+                <span class="badge bg-primary d-block mb-2 p-2">Completed</span>
+
+            {% elif a.status == 'Declined' %}
+                <span class="badge bg-danger d-block mb-2 p-2">Declined</span>
+
+            {% elif a.status == 'Cancelled' %}
+                <span class="badge bg-secondary d-block mb-2 p-2">Cancelled by patient</span>
+
+            {% else %}
+                {% if a.payment_status == 'Paid' %}
+                <form method="POST" action="{{ url_for('update_status', appointment_id=a.appointment_id, status='Confirmed') }}" class="mb-2">
+                    <button type="submit" class="btn btn-info btn-sm w-100">Approve</button>
+                </form>
+                {% else %}
+                <button type="button" class="btn btn-info btn-sm w-100 mb-1" disabled
+                        title="Confirm the M-PESA payment first">Approve</button>
+                <small class="text-muted d-block mb-2">Confirm the payment above to enable Approve.</small>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('update_status', appointment_id=a.appointment_id, status='Declined') }}" class="mb-2"
+                      onsubmit="return confirm('Decline this appointment?');">
+                    <button type="submit" class="btn btn-danger btn-sm w-100 mb-1">Decline</button>
+                    <textarea name="reason" class="form-control form-control-sm" rows="2"
+                              placeholder="Reason for declining" required></textarea>
+                </form>
+
+                <button type="button" class="btn btn-primary btn-sm w-100 mb-2" disabled
+                        title="Confirm the appointment before marking it complete">Mark Completed</button>
+            {% endif %}
+
+            {% if a.status not in ['Confirmed', 'Completed', 'Declined', 'Cancelled'] %}
+            <hr>
+            <form method="POST" action="{{ url_for('reschedule_appointment', appointment_id=a.appointment_id) }}" class="mb-2">
+                <label class="form-label mb-1"><strong>Reschedule</strong></label>
+                <input type="date" name="new_date" class="form-control form-control-sm mb-1" required>
+                <input type="time" name="new_time" class="form-control form-control-sm mb-1" required>
+                <input type="text" name="reason" class="form-control form-control-sm mb-1" placeholder="Reason for rescheduling" required>
+                <button type="submit" class="btn btn-warning btn-sm w-100">Reschedule</button>
+            </form>
+            {% endif %}
+
+            {% if a.status == 'Completed' %}
+            <a href="{{ url_for('doctor_appointment_report', appointment_id=a.appointment_id) }}" class="btn btn-outline-secondary btn-sm w-100">
+                Download Report
+            </a>
+            {% endif %}
+
+            {% endif %}
+
+            </div>
+        </div>
+        <!-- ===== end COLUMN 1 ===== -->
+
+        <!-- ===== COLUMN 2: Set Follow-up ===== -->
+        <div class="col-lg-4 col-md-6">
+          <div class="p-3 border rounded h-100 bg-light">
+            {% if a.status == 'Completed' and not a.referred_to_first %}
+            <form method="POST" action="{{ url_for('book_followup', appointment_id=a.appointment_id) }}" class="mb-2">
+                <label class="form-label mb-1"><strong>Set Follow-up</strong></label>
+                <input type="date" name="followup_date" class="form-control form-control-sm mb-1" required>
+                <input type="time" name="followup_time" class="form-control form-control-sm mb-1" required>
+                <input type="text" name="followup_reason" class="form-control form-control-sm mb-1" placeholder="Reason for follow-up" required>
+                <button type="submit" class="btn btn-success btn-sm w-100">Book Follow-up</button>
+            </form>
+            {% else %}
+            <label class="form-label mb-1"><strong>Set Follow-up</strong></label>
+            <p class="text-muted small mb-0">
+                {% if a.referred_to_first %}Not available - this patient was referred to another doctor.{% else %}Available once the appointment is marked Completed.{% endif %}
+            </p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- ===== COLUMN 3: Refer to Another Doctor ===== -->
+        <div class="col-lg-4 col-md-6">
+          <div class="p-3 border rounded h-100 bg-light">
+            {% if a.status == 'Completed' and not a.referred_to_first %}
+            {% if a.patient_id in already_referred_patient_ids %}
+            <div class="alert alert-warning py-2 px-3 mb-2">
+                <i class="bi bi-exclamation-circle"></i> You have already been referred.
+            </div>
+            {% else %}
+            <form method="POST" action="{{ url_for('refer_patient', appointment_id=a.appointment_id) }}" class="mb-2">
+                <label class="form-label mb-1"><strong>Refer to Another Doctor</strong></label>
+                <select name="referred_to_doctor_id" class="form-select form-select-sm mb-1" required>
+                    <option value="">-- Select Doctor --</option>
+                    {% for od in other_doctors %}
+                    <option value="{{ od.doctor_id }}">Dr. {{ od.firstname }} {{ od.surname }} ({{ od.speciality }})</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="referral_reason" class="form-control form-control-sm mb-1" placeholder="Reason for referral" required>
+                <button type="submit" class="btn btn-info btn-sm w-100">Refer Patient</button>
+            </form>
+            {% endif %}
+            {% else %}
+            <label class="form-label mb-1"><strong>Refer to Another Doctor</strong></label>
+            <p class="text-muted small mb-0">
+                {% if a.referred_to_first %}This patient has already been referred.{% else %}Available once the appointment is marked Completed.{% endif %}
+            </p>
+            {% endif %}
+          </div>
+        </div>
+
+        </div>
+        </div>
+    </div>
+    </div>
+    {% endfor %}
+    </div>
+   {% endif %}
+
+</div>
+<script>
+    // NEW: reschedule and follow-up forms cannot pick a past date/time (must be at least 1 hour from now)
+    (function () {
+        function pad(n) { return String(n).padStart(2, '0'); }
+        var d = new Date();
+        var todayStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+
+        // [date field name, time field name] for each form that needs the check
+        [['new_date', 'new_time'], ['followup_date', 'followup_time']].forEach(function (names) {
+            document.querySelectorAll('input[name="' + names[0] + '"]').forEach(function (dateInput) {
+                dateInput.min = todayStr;   // past dates are greyed out in the date picker
+                var form = dateInput.form;
+                form.addEventListener('submit', function (e) {
+                    var timeInput = form.querySelector('input[name="' + names[1] + '"]');
+                    var chosen = new Date(dateInput.value + 'T' + timeInput.value);
+                    if (isNaN(chosen.getTime()) || chosen < new Date(Date.now() + 60 * 60 * 1000)) {
+                        e.preventDefault();
+                        alert('Please choose a date and time at least 1 hour from now. Past dates and times are not allowed.');
+                    }
+                });
+            });
+        });
+    })();
+</script>
+</body>
+</html>

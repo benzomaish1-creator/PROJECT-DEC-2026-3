@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Appointments</title>
+    <link rel="stylesheet" href="../static/bootstrap-5.3.8-dist/bootstrap-5.3.8-dist/css/bootstrap.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../static/custom.css">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('specialists') }}" class="btn btn-secondary">
+            ← Back to Specialists
+        </a>
+        <div>
+            <a href="{{ url_for('patient_appointments_report') }}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-file-earmark-pdf"></i> Treatment Reports
+            </a>
+            <a href="{{ url_for('patient_logout') }}" class="btn btn-outline-danger">
+                Logout
+            </a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-info">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if notifications %}
+    <div class="card mb-4">
+        <div class="card-header bg-white"><strong>Notifications</strong></div>
+        <ul class="list-group list-group-flush">
+            {% for n in notifications %}
+            <li class="list-group-item d-flex justify-content-between align-items-start {% if not n.is_read %}bg-light{% endif %}">
+                <div>
+                    {% if not n.is_read %}<span class="badge bg-primary me-2">New</span>{% endif %}
+                    {{ n.message }}
+                    <br><small class="text-muted">{{ n.created_at }}</small>
+                </div>
+                <a href="{{ url_for('delete_notification', notification_id=n.notification_id) }}"
+                   class="btn btn-sm btn-outline-danger ms-3"
+                   onclick="return confirm('Delete this notification?');">Delete</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if referrals %}
+    <div class="card mb-4">
+        <div class="card-header bg-white"><strong>My Referrals</strong></div>
+        <ul class="list-group list-group-flush">
+            {% for r in referrals %}
+            <li class="list-group-item">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        Referred by Dr. {{ r.from_first }} {{ r.from_last }} to
+                        <strong>Dr. {{ r.to_first }} {{ r.to_last }}</strong>
+                        <span class="badge
+                            {% if r.status == 'Accepted' %}bg-success
+                            {% elif r.status == 'Declined' %}bg-danger
+                            {% else %}bg-warning{% endif %} ms-2">
+                            {{ r.status }}
+                        </span>
+                        <p class="mb-0 mt-1"><strong>Reason:</strong> {{ r.reason }}</p>
+                        {% if r.status == 'Accepted' %}
+                            {% if r.resulting_appointment_id %}
+                            <p class="mb-0 mt-1 text-success"><small><i class="bi bi-calendar-check"></i> Your appointment with Dr. {{ r.to_first }} {{ r.to_last }} is scheduled for {{ r.scheduled_date }} at {{ r.scheduled_time }}.</small></p>
+                            {% else %}
+                            <p class="mb-0 mt-1 text-primary"><small><i class="bi bi-info-circle"></i> Dr. {{ r.to_first }} {{ r.to_last }} has accepted your referral and will schedule your appointment shortly.</small></p>
+                            {% endif %}
+                        {% elif r.status == 'Pending' %}
+                        <p class="mb-0 mt-1 text-muted"><small><i class="bi bi-hourglass-split"></i> Waiting for Dr. {{ r.to_first }} {{ r.to_last }} to review this referral.</small></p>
+                        {% elif r.status == 'Declined' %}
+                        <p class="mb-0 mt-1 text-danger"><small><i class="bi bi-x-circle"></i> This referral was declined. Please book a fresh appointment with another doctor.</small></p>
+                        {% endif %}
+                        <small class="text-muted">{{ r.created_at }}</small>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                        {% if r.status == 'Declined' %}
+                        <a href="{{ url_for('specialists') }}" class="btn btn-sm btn-outline-primary">Browse Doctors</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+<!-- check if there is a message and show themessage from python -->
+     {% if message %}
+           <div class="alert alert-warning">{{ message }}</div>
+           <a href="/" class="btn btn-outline-dark">
+            Go to Specialists
+        </a>
+
+     {% else %}
+     <!-- ifno message,then there is an appointemnt,show them -->
+    <h3 class="mb-4">My Appointments</h3>
+    <table class="table table-bordered bg-white">
+        <thead>
+            <tr>
+                <th>Doctor</th>
+                <th>Speciality</th>
+                <th>Reason</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Payment</th>
+                <th>Doctor's Feedback</th>
+                <th>Report</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in appointments %}
+            <tr>
+                <td>Dr. {{ a.firstname }} {{ a.surname }}</td>
+                <td>{{ a.speciality }}</td>
+                <td>{{ a.reason }}</td>
+                <td>{{ a.appointment_date }}:{{ a.appointment_time }}</td>
+                <td>
+                    <span class="badge
+                        {% if a.status == 'Approved' %}bg-success
+                        {% elif a.status == 'Completed' %}bg-primary
+                        {% elif a.status == 'Confirmed' %}bg-info
+                        {% elif a.status == 'Declined' %}bg-danger
+                        {% elif a.status == 'Cancelled' %}bg-secondary
+                        {% elif a.status == 'Rescheduled' %}bg-warning
+                        {% else %}bg-warning{% endif %}">
+                        {{ a.status }}
+                    </span>
+                </td>
+                <td>
+                    {% if a.payment_status == 'Paid' %}
+                    <span class="badge bg-success">Paid</span>
+                    <br><small class="text-muted">Confirmed by doctor - KES {{ '%d' % a.amount_paid }}</small>
+                    {% elif a.payment_phone and a.status not in ['Declined', 'Cancelled'] %}
+                    <span class="badge bg-warning text-dark">Awaiting doctor's confirmation</span>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>{{ a.feedback or "—" }}</td>
+                <td>
+                    {% if a.status == 'Completed' %}
+                    <a href="{{ url_for('patient_appointment_report', appointment_id=a.appointment_id) }}" class="btn btn-sm btn-outline-secondary">
+                        Download
+                    </a>
+                    {% else %}
+                    <span class="text-muted small">Available after completion</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if a.status in ['Pending', 'Confirmed', 'Rescheduled'] %}
+                    <button type="button" class="btn btn-sm btn-warning mb-1" data-bs-toggle="modal" data-bs-target="#rescheduleModal{{ a.appointment_id }}">
+                        Reschedule
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger mb-1" data-bs-toggle="modal" data-bs-target="#cancelModal{{ a.appointment_id }}">
+                        Cancel
+                    </button>
+                    {% else %}
+                     —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+             {% endif %}
+        </tbody>
+    </table>
+
+    <!-- Reschedule / Cancel modals, one pair per appointment -->
+    {% if appointments %}
+    {% for a in appointments %}
+    {% if a.status in ['Pending', 'Confirmed', 'Rescheduled'] %}
+
+    <div class="modal fade" id="rescheduleModal{{ a.appointment_id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('patient_reschedule_appointment', appointment_id=a.appointment_id) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Reschedule Appointment</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small">Must be at least 6 hours before your currently booked time.</p>
+                        <div class="mb-2">
+                            <label class="form-label">New Date</label>
+                            <input type="date" name="new_date" class="form-control" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">New Time</label>
+                            <input type="time" name="new_time" class="form-control" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Reason for Rescheduling</label>
+                            <textarea name="reason" class="form-control" rows="2" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-warning">Confirm Reschedule</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="cancelModal{{ a.appointment_id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('patient_cancel_appointment', appointment_id=a.appointment_id) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Cancel Appointment</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small">Must be at least 6 hours before your booked time. This cannot be undone.</p>
+                        <div class="mb-2">
+                            <label class="form-label">Reason for Cancelling</label>
+                            <textarea name="reason" class="form-control" rows="2" placeholder="e.g. emergency came up" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+</div>
+
+<script src="../static/bootstrap-5.3.8-dist/bootstrap-5.3.8-dist/js/bootstrap.js"></script>
+<script>
+    // NEW: reschedule forms cannot pick a past date/time (must be at least 1 hour from now)
+    (function () {
+        function pad(n) { return String(n).padStart(2, '0'); }
+        var d = new Date();
+        var todayStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+
+        document.querySelectorAll('input[name="new_date"]').forEach(function (dateInput) {
+            dateInput.min = todayStr;   // past dates are greyed out in the date picker
+            var form = dateInput.form;
+            form.addEventListener('submit', function (e) {
+                var timeInput = form.querySelector('input[name="new_time"]');
+                var chosen = new Date(dateInput.value + 'T' + timeInput.value);
+                if (isNaN(chosen.getTime()) || chosen < new Date(Date.now() + 60 * 60 * 1000)) {
+                    e.preventDefault();
+                    alert('Please choose a date and time at least 1 hour from now. Past dates and times are not allowed.');
+                }
+            });
+        });
+    })();
+</script>
+</body>
+</html>
